@@ -8,25 +8,19 @@ import { FileList, type DisplayFile } from "@/components/FileList";
 import { SortModeSelector } from "@/components/SortModeSelector";
 import { RenameOptions, type RenameConfig } from "@/components/RenameOptions";
 import { IconZip, IconCheck, IconSpinner, IconLayers, IconSort, IconTag, IconInbox, IconInfo, IconUser, IconLogout, IconFolder } from "@/components/icons";
-import { DuplicateWarningModal, type DuplicateWarningData } from "@/components/DuplicateWarningModal";
+import { DuplicateWarningModal } from "@/components/DuplicateWarningModal";
 import type { SortMode } from "@/lib/sorting";
-import { extractSttNumber } from "@/lib/sorting";
-import { computeFileHash } from "@/lib/dedup";
 import {
-  getOrCreateBatchForRange,
-  rangeIndexForStt,
-  uploadFileToBatch,
-  resortBatch,
-  markBatchFull,
   markBatchZipped,
-  updateBatchCounts,
   deleteBatchFile,
-  findDuplicate,
+  resortBatch,
+  updateBatchCounts,
   getPublicUrl,
   listBatchFiles,
   type BatchRow,
   type BatchFileRow,
 } from "@/lib/batchStore";
+import { uploadQueue, type UploadQueueState } from "@/lib/uploadQueue";
 
 const HARD_MAX_THRESHOLD = 100; // Vercel Hobby function timeout safety cap
 const DEFAULT_THRESHOLD = 100;
@@ -56,15 +50,25 @@ export default function Home() {
   });
 
   const [openBatches, setOpenBatches] = useState<BatchWithFiles[]>([]);
-  const [uploadingCount, setUploadingCount] = useState(0);
-  const [resorting, setResorting] = useState(false);
   const [loadingInitial, setLoadingInitial] = useState(true);
   const [zippingId, setZippingId] = useState<string | null>(null);
   const [zipDoneIds, setZipDoneIds] = useState<Set<string>>(new Set());
-  const [error, setError] = useState<string | null>(null);
-  const [duplicateWarning, setDuplicateWarning] = useState<DuplicateWarningData | null>(null);
   const [duplicatePreviewUrl, setDuplicatePreviewUrl] = useState<string | null>(null);
-  const pendingQueueRef = useRef<File[]>([]);
+
+  // Local mirror of the shared upload queue's state. Subscribing means this
+  // page reflects live progress even if a duplicate popup or upload was
+  // already in flight before this component mounted (e.g. after navigating
+  // back from /batches).
+  const [queueState, setQueueState] = useState<UploadQueueState>({
+    queueLength: 0,
+    processing: false,
+    resorting: false,
+    error: null,
+    duplicateWarning: null,
+    batchUpdate: null,
+  });
+  const totalQueuedRef = useRef(0);
+  const [totalQueued, setTotalQueued] = useState(0);
 
   const renameOptionsForResort = useMemo(
     () => ({
@@ -77,20 +81,37 @@ export default function Home() {
     [renameConfig]
   );
 
-  // On first load, just show the "no batches yet" state — batches are
-  // created lazily as files come in, based on each file's STT range.
+  useEffect(() => {
+    uploadQueue.setConfig(threshold, sortMode, renameOptionsForResort);
+  }, [threshold, sortMode, renameOptionsForResort]);
+
+  useEffect(() => {
+    const unsubscribe = uploadQueue.subscribe((state) => {
+      setQueueState(state);
+      if (state.batchUpdate) {
+        upsertOpenBatch(state.batchUpdate.batch, state.batchUpdate.files);
+      }
+      if (state.queueLength === 0 && !state.processing) {
+        // Queue drained — reset the progress counter for the next batch of adds.
+        totalQueuedRef.current = 0;
+        setTotalQueued(0);
+      }
+    });
+    return unsubscribe;
+  }, []);
+
   useEffect(() => {
     setLoadingInitial(false);
   }, []);
 
   useEffect(() => {
-    if (!duplicateWarning) {
+    if (!queueState.duplicateWarning) {
       setDuplicatePreviewUrl(null);
       return;
     }
-    if (!duplicateWarning.existingFile.mime_type?.startsWith("image/")) return;
-    setDuplicatePreviewUrl(getPublicUrl(duplicateWarning.existingFile.storage_path));
-  }, [duplicateWarning]);
+    if (!queueState.duplicateWarning.existingFile.mime_type?.startsWith("image/")) return;
+    setDuplicatePreviewUrl(getPublicUrl(queueState.duplicateWarning.existingFile.storage_path));
+  }, [queueState.duplicateWarning]);
 
   function byRangeIndex(a: BatchWithFiles, b: BatchWithFiles) {
     return (a.batch.range_index ?? 0) - (b.batch.range_index ?? 0);
@@ -118,105 +139,18 @@ export default function Home() {
     return files;
   }
 
-  async function processQueue() {
-    while (pendingQueueRef.current.length > 0) {
-      const file = pendingQueueRef.current[0];
-      setUploadingCount(pendingQueueRef.current.length);
-
-      try {
-        const stt = extractSttNumber(file.name);
-        const rangeIndex = stt !== null ? rangeIndexForStt(stt, threshold) : 0;
-        const batch = await getOrCreateBatchForRange(rangeIndex, threshold, sortMode);
-
-        if (batch.is_full) {
-          setError(
-            `"${file.name}" thuộc lô đã đầy (${batch.name}) — không thể thêm nữa.`
-          );
-          pendingQueueRef.current = pendingQueueRef.current.slice(1);
-          continue;
-        }
-
-        const hash = await computeFileHash(file);
-        const existingFiles = await listBatchFiles(batch.id);
-        const dup = findDuplicate(file.name, hash, existingFiles);
-
-        if (dup) {
-          const nameMatch = dup.original_name.trim().toLowerCase() === file.name.trim().toLowerCase();
-          const contentMatch = !!dup.content_hash && dup.content_hash === hash;
-          upsertOpenBatch(batch, existingFiles);
-          setDuplicateWarning({
-            newFile: file,
-            existingFile: dup,
-            matchType: nameMatch && contentMatch ? "both" : contentMatch ? "content" : "name",
-          });
-          return; // Pause queue processing until the user decides.
-        }
-
-        await uploadFileToBatch(batch.id, file, hash);
-        pendingQueueRef.current = pendingQueueRef.current.slice(1);
-
-        setResorting(true);
-        const sorted = await resortBatch(batch.id, sortMode, renameOptionsForResort);
-        await updateBatchCounts(
-          batch.id,
-          sorted.length,
-          sorted.reduce((sum, f) => sum + f.size_bytes, 0)
-        );
-        const nowFull = sorted.length >= batch.threshold;
-        if (nowFull) await markBatchFull(batch.id);
-        upsertOpenBatch({ ...batch, file_count: sorted.length, is_full: nowFull }, sorted);
-        setResorting(false);
-      } catch (e) {
-        const detail = e instanceof Error ? e.message : String(e);
-        setError(`Lỗi khi tải "${file.name}": ${detail}`);
-        pendingQueueRef.current = pendingQueueRef.current.slice(1);
-      }
-    }
-
-    setUploadingCount(0);
-  }
-
   function handleFilesAdded(newFiles: File[]) {
-    setError(null);
-    pendingQueueRef.current = [...pendingQueueRef.current, ...newFiles];
-    if (pendingQueueRef.current.length === newFiles.length) {
-      processQueue();
-    }
+    totalQueuedRef.current += newFiles.length;
+    setTotalQueued(totalQueuedRef.current);
+    uploadQueue.addFiles(newFiles);
   }
 
   function handleDuplicateSkip() {
-    pendingQueueRef.current = pendingQueueRef.current.slice(1);
-    setDuplicateWarning(null);
-    processQueue();
+    uploadQueue.skipDuplicate();
   }
 
-  async function handleDuplicateKeepBoth() {
-    const file = pendingQueueRef.current[0];
-    setDuplicateWarning(null);
-    if (!file) return;
-    try {
-      const stt = extractSttNumber(file.name);
-      const rangeIndex = stt !== null ? rangeIndexForStt(stt, threshold) : 0;
-      const batch = await getOrCreateBatchForRange(rangeIndex, threshold, sortMode);
-      const hash = await computeFileHash(file);
-      await uploadFileToBatch(batch.id, file, hash);
-      pendingQueueRef.current = pendingQueueRef.current.slice(1);
-
-      const sorted = await resortBatch(batch.id, sortMode, renameOptionsForResort);
-      await updateBatchCounts(
-        batch.id,
-        sorted.length,
-        sorted.reduce((sum, f) => sum + f.size_bytes, 0)
-      );
-      const nowFull = sorted.length >= batch.threshold;
-      if (nowFull) await markBatchFull(batch.id);
-      upsertOpenBatch({ ...batch, file_count: sorted.length, is_full: nowFull }, sorted);
-    } catch (e) {
-      const detail = e instanceof Error ? e.message : String(e);
-      setError(`Lỗi khi tải "${file.name}": ${detail}`);
-      pendingQueueRef.current = pendingQueueRef.current.slice(1);
-    }
-    processQueue();
+  function handleDuplicateKeepBoth() {
+    uploadQueue.keepDuplicateBoth();
   }
 
   async function handleRemove(batchId: string, fileId: string) {
@@ -233,28 +167,25 @@ export default function Home() {
       );
       await refreshBatch(batchId);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Không xóa được file.");
+      // Keep this local — it's outside the shared queue's error channel.
+      console.error(e);
     }
   }
 
   async function handleSortModeChange(mode: SortMode) {
     setSortMode(mode);
-    setResorting(true);
     try {
       for (const entry of openBatches) {
         const sorted = await resortBatch(entry.batch.id, mode, renameOptionsForResort);
         upsertOpenBatch(entry.batch, sorted);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Không sắp xếp lại được.");
-    } finally {
-      setResorting(false);
+      console.error(e);
     }
   }
 
   async function handleRenameConfigChange(config: RenameConfig) {
     setRenameConfig(config);
-    setResorting(true);
     try {
       for (const entry of openBatches) {
         const sorted = await resortBatch(entry.batch.id, sortMode, {
@@ -267,15 +198,12 @@ export default function Home() {
         upsertOpenBatch(entry.batch, sorted);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Không cập nhật được tên file.");
-    } finally {
-      setResorting(false);
+      console.error(e);
     }
   }
 
   async function handleDownloadZip(batch: BatchRow) {
     setZippingId(batch.id);
-    setError(null);
     try {
       const res = await fetch("/api/zip-batch", {
         method: "POST",
@@ -299,13 +227,16 @@ export default function Home() {
       await markBatchZipped(batch.id);
       setZipDoneIds((prev) => new Set(prev).add(batch.id));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Có lỗi khi tải zip.");
+      console.error(e);
     } finally {
       setZippingId(null);
     }
   }
 
   const totalPendingAcrossBatches = openBatches.reduce((sum, b) => sum + b.files.length, 0);
+  const uploadedSoFar = Math.max(totalQueued - queueState.queueLength, 0);
+  const progressPercent =
+    totalQueued > 0 ? Math.round((uploadedSoFar / totalQueued) * 100) : 0;
 
   return (
     <main className="min-h-screen bg-white">
@@ -378,15 +309,28 @@ export default function Home() {
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4">
             {/* Left column: upload + open batches */}
             <div className="space-y-3">
-              <Dropzone onFilesAdded={handleFilesAdded} disabled={uploadingCount > 0} />
+              <Dropzone onFilesAdded={handleFilesAdded} disabled={queueState.processing} />
 
-              {uploadingCount > 0 && (
-                <div className="flex items-center gap-1.5 text-[12px] text-primary-dark px-0.5">
-                  <IconSpinner className="w-3 h-3" />
-                  Đang xử lý {uploadingCount} file...
+              {(queueState.processing || totalQueued > 0) && queueState.queueLength > 0 && (
+                <div className="space-y-1 px-0.5">
+                  <div className="flex items-center justify-between text-[11px] text-primary-dark font-semibold">
+                    <span className="flex items-center gap-1.5">
+                      <IconSpinner className="w-3 h-3" />
+                      Đang tải file...
+                    </span>
+                    <span className="tabular-nums">
+                      {uploadedSoFar}/{totalQueued} ({progressPercent}%)
+                    </span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-primary-light overflow-hidden">
+                    <div
+                      className="h-full bg-primary transition-all duration-200"
+                      style={{ width: `${progressPercent}%` }}
+                    />
+                  </div>
                 </div>
               )}
-              {resorting && uploadingCount === 0 && (
+              {queueState.resorting && queueState.queueLength === 0 && (
                 <div className="flex items-center gap-1.5 text-[12px] text-ink-medium px-0.5">
                   <IconSpinner className="w-3 h-3" />
                   Đang sắp xếp lại...
@@ -457,9 +401,9 @@ export default function Home() {
                 </div>
               ))}
 
-              {error && (
+              {queueState.error && (
                 <p className="text-[11.5px] text-red-600 bg-red-50 border border-red-100 rounded-md px-2.5 py-1.5">
-                  {error}
+                  {queueState.error}
                 </p>
               )}
             </div>
@@ -512,9 +456,9 @@ export default function Home() {
         )}
       </div>
 
-      {duplicateWarning && (
+      {queueState.duplicateWarning && (
         <DuplicateWarningModal
-          data={duplicateWarning}
+          data={queueState.duplicateWarning}
           existingPreviewUrl={duplicatePreviewUrl}
           onSkip={handleDuplicateSkip}
           onKeepBoth={handleDuplicateKeepBoth}
