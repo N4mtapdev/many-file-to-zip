@@ -12,7 +12,7 @@ import {
   type BatchFileRow,
 } from "@/lib/batchStore";
 import { getExtension } from "@/lib/sorting";
-import { IconSpinner, IconZip, IconCheck, IconFile } from "@/components/icons";
+import { IconSpinner, IconZip, IconCheck, IconFile, IconFolder } from "@/components/icons";
 
 function isImage(mime: string | null): boolean {
   return !!mime && mime.startsWith("image/");
@@ -83,9 +83,9 @@ export default function BatchDetailPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-white flex items-center justify-center">
-        <div className="flex items-center gap-2 text-ink-medium text-[14px]">
-          <IconSpinner className="w-4 h-4" />
+      <main className="min-h-screen bg-surface-tint/40 flex items-center justify-center">
+        <div className="flex items-center gap-2 text-ink-medium text-[13px]">
+          <IconSpinner className="w-3.5 h-3.5" />
           Đang tải...
         </div>
       </main>
@@ -94,12 +94,12 @@ export default function BatchDetailPage() {
 
   if (error || !batch) {
     return (
-      <main className="min-h-screen bg-white">
-        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-10">
-          <p className="text-[13px] text-red-600 bg-red-50 border border-red-100 rounded-md px-3 py-2">
+      <main className="min-h-screen bg-surface-tint/40">
+        <div className="max-w-[1100px] mx-auto px-4 sm:px-5 py-8">
+          <p className="text-[12px] text-red-600 bg-red-50 border border-red-100 rounded-md px-3 py-2">
             {error || "Không tìm thấy lô này."}
           </p>
-          <Link href="/batches" className="text-[13px] text-primary-dark font-bold mt-4 inline-block">
+          <Link href="/batches" className="text-[12px] text-primary-dark font-bold mt-3 inline-block">
             ← Quay lại danh sách
           </Link>
         </div>
@@ -108,41 +108,46 @@ export default function BatchDetailPage() {
   }
 
   return (
-    <main className="min-h-screen bg-white">
-      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-10 sm:py-14">
-        <Link href="/batches" className="text-[13px] text-primary-dark font-bold mb-4 inline-block">
+    <main className="min-h-screen bg-surface-tint/40">
+      <div className="max-w-[1100px] mx-auto px-4 sm:px-5 py-6 sm:py-8">
+        <Link href="/batches" className="text-[12px] text-primary-dark font-bold mb-3 inline-block">
           ← Quay lại danh sách
         </Link>
 
-        <header className="mb-6 flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-[26px] sm:text-[30px] font-black tracking-tight text-ink-dark">
-              {batch.name}
-            </h1>
-            <p className="text-[13px] text-ink-medium mt-1">
-              {files.length} / {batch.threshold} file ·{" "}
-              {new Date(batch.created_at).toLocaleString("vi-VN")}
-            </p>
+        <header className="mb-5 flex items-start justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-lg bg-primary-light/60 flex items-center justify-center shrink-0">
+              <IconFolder className="w-4.5 h-4.5 text-primary-dark" />
+            </div>
+            <div>
+              <h1 className="text-[19px] sm:text-[21px] font-black tracking-tight text-ink-dark">
+                {batch.name}
+              </h1>
+              <p className="text-[11.5px] text-ink-medium">
+                {files.length} / {batch.threshold} file ·{" "}
+                {new Date(batch.created_at).toLocaleString("vi-VN")}
+              </p>
+            </div>
           </div>
           <button
             type="button"
             onClick={handleDownloadZip}
             disabled={zipping || files.length === 0}
-            className="flex items-center gap-2 rounded-lg bg-primary text-white font-black text-[13px] px-5 h-[42px] shadow-cta hover:bg-primary-deep hover:shadow-ctaHover transition-all duration-200 disabled:opacity-50"
+            className="flex items-center gap-1.5 rounded-lg bg-primary text-white font-black text-[12px] px-4 h-[38px] shadow-cta hover:bg-primary-deep hover:shadow-ctaHover hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:shadow-none disabled:translate-y-0"
           >
             {zipping ? (
               <>
-                <IconSpinner className="w-4 h-4" />
+                <IconSpinner className="w-3.5 h-3.5" />
                 Đang nén...
               </>
             ) : zipDone ? (
               <>
-                <IconCheck className="w-4 h-4" />
+                <IconCheck className="w-3.5 h-3.5" />
                 Đã tải xuống
               </>
             ) : (
               <>
-                <IconZip className="w-4 h-4" />
+                <IconZip className="w-3.5 h-3.5" />
                 Tải lại ZIP
               </>
             )}
@@ -150,16 +155,16 @@ export default function BatchDetailPage() {
         </header>
 
         {error && (
-          <p className="text-[12px] text-red-600 bg-red-50 border border-red-100 rounded-md px-3 py-2 mb-4">
+          <p className="text-[11.5px] text-red-600 bg-red-50 border border-red-100 rounded-md px-2.5 py-1.5 mb-3">
             {error}
           </p>
         )}
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2.5">
           {files.map((f, index) => (
             <div
               key={f.id}
-              className="rounded-lg border border-surface-border overflow-hidden bg-surface-tint aspect-square relative group"
+              className="rounded-lg border border-surface-border shadow-card hover:shadow-cardHover transition-shadow duration-200 overflow-hidden bg-white aspect-square relative group"
             >
               {isImage(f.mime_type) ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -170,16 +175,16 @@ export default function BatchDetailPage() {
                   loading="lazy"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <IconFile className="w-8 h-8 text-primary-deep" />
+                <div className="w-full h-full flex items-center justify-center bg-surface-tint">
+                  <IconFile className="w-7 h-7 text-primary-deep" />
                 </div>
               )}
-              <span className="absolute top-1 left-1 text-[10px] font-bold text-white bg-black/50 rounded px-1.5 py-0.5">
+              <span className="absolute top-1 left-1 text-[9.5px] font-bold text-white bg-black/50 rounded px-1.5 py-0.5">
                 {index + 1}
               </span>
               <FileTypeCorner name={f.original_name} />
               <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-1.5 py-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <p className="text-[10px] text-white truncate">
+                <p className="text-[9.5px] text-white truncate">
                   {f.renamed_name || f.original_name}
                 </p>
               </div>
@@ -197,7 +202,7 @@ function FileTypeCorner({ name }: { name: string }) {
   const cls = TYPE_STYLES[ext] || "bg-slate-400";
   return (
     <span
-      className={`absolute top-1 right-1 text-[9px] font-black uppercase text-white rounded px-1.5 py-0.5 ${cls}`}
+      className={`absolute top-1 right-1 text-[8.5px] font-black uppercase text-white rounded px-1.5 py-0.5 ${cls}`}
     >
       {ext}
     </span>
