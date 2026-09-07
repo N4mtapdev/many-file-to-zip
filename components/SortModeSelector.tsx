@@ -26,14 +26,14 @@ export function SortModeSelector({
             key={mode.value}
             type="button"
             onClick={() => onChange(mode.value)}
-            className={`text-left rounded-md border px-2.5 py-2 transition-all duration-150 ${
+            className={`text-left rounded border px-2.5 py-2 transition-all duration-150 ${
               active
-                ? "bg-primary-light/60 border-primary text-primary-dark shadow-focus"
-                : "bg-white border-surface-border text-ink-dark hover:border-primary hover:bg-primary-light/30"
+                ? "bg-white border-primary border-l-[3px] text-ink-dark shadow-focus"
+                : "bg-white border-surface-border text-ink-dark hover:border-primary/50"
             }`}
           >
             <div className="text-[11.5px] font-bold leading-tight">{mode.label}</div>
-            <div className="text-[10px] text-ink-medium mt-0.5">{mode.hint}</div>
+            <div className="text-[10px] text-ink-medium mt-0.5 font-mono">{mode.hint}</div>
           </button>
         );
       })}
