@@ -33,12 +33,12 @@ export function Dropzone({
       onDragLeave={() => setIsDragging(false)}
       onDrop={handleDrop}
       onClick={() => !disabled && inputRef.current?.click()}
-      className={`rounded-lg border-2 border-dashed px-4 py-5 text-center cursor-pointer transition-all duration-200 ${
+      className={`rounded-xl border-2 border-dashed px-4 py-5 text-center cursor-pointer transition-all duration-200 ${
         disabled
-          ? "opacity-50 cursor-not-allowed border-surface-border"
+          ? "opacity-50 cursor-not-allowed border-surface-border bg-white"
           : isDragging
-          ? "border-primary bg-primary-light/40 scale-[1.01]"
-          : "border-primary-light bg-surface-tint hover:border-primary hover:bg-primary-light/30"
+          ? "border-primary bg-primary-light/40 scale-[1.01] shadow-cardHover"
+          : "border-primary-light bg-white shadow-card hover:border-primary hover:shadow-cardHover"
       }`}
     >
       <input
