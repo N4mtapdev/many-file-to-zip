@@ -40,20 +40,18 @@ export function FileList({
   if (files.length === 0) return null;
 
   return (
-    <div className="rounded-lg border border-surface-border overflow-hidden bg-surface-tint/30">
-      <div className="max-h-[300px] overflow-y-auto divide-y divide-surface-border">
+    <div className="rounded border border-surface-border overflow-hidden bg-white">
+      <div className="max-h-[300px] overflow-y-auto divide-y divide-surface-border/70">
         {files.map((file, index) => (
           <div
             key={file.id}
-            className="flex items-center gap-2 px-2.5 py-1.5 bg-white transition-colors duration-150 animate-fade-in"
+            className="flex items-center gap-2 px-2.5 py-1.5 bg-white hover:bg-surface-tint/40 transition-colors duration-150 animate-fade-in"
           >
-            <span className="text-[10px] font-bold text-primary w-5 shrink-0 text-center tabular-nums">
-              {index + 1}
+            <span className="text-[10px] font-mono font-bold text-accent-amberStrong w-6 shrink-0 text-right tabular-nums">
+              {String(index + 1).padStart(2, "0")}
             </span>
 
-            <div className="w-6 h-6 rounded-md bg-surface-tint border border-primary-light flex items-center justify-center shrink-0">
-              <IconFile className="w-3 h-3 text-primary-deep" />
-            </div>
+            <IconFile className="w-3 h-3 text-ink-medium shrink-0" />
 
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
@@ -71,7 +69,7 @@ export function FileList({
 
             <FileTypeBadge name={file.originalName} />
 
-            <span className="text-[10px] text-ink-medium shrink-0 tabular-nums">
+            <span className="text-[10px] font-mono text-ink-medium shrink-0 tabular-nums">
               {formatSize(file.size)}
             </span>
 
@@ -80,7 +78,7 @@ export function FileList({
             <button
               type="button"
               onClick={() => onRemove(file.id)}
-              className="w-6 h-6 rounded-md border border-surface-border flex items-center justify-center text-ink-medium hover:border-accent-amber hover:text-accent-amberStrong hover:bg-accent-amber/5 transition-colors shrink-0"
+              className="w-5 h-5 flex items-center justify-center text-ink-medium hover:text-red-600 transition-colors shrink-0"
               aria-label="Xóa file"
             >
               <IconTrash className="w-3 h-3" />
@@ -95,16 +93,14 @@ export function FileList({
 function StatusBadge({ status }: { status: DisplayFile["status"] }) {
   if (status === "pending") return null;
   const map = {
-    uploading: { label: "Đang tải", cls: "text-accent-amberStrong bg-accent-amber/10" },
-    uploaded: { label: "Xong", cls: "text-primary-dark bg-primary-light/60" },
-    error: { label: "Lỗi", cls: "text-red-600 bg-red-50" },
+    uploading: { label: "Đang tải", cls: "text-accent-amberStrong" },
+    uploaded: { label: "✓", cls: "text-primary" },
+    error: { label: "Lỗi", cls: "text-red-600" },
   } as const;
   const info = map[status];
   if (!info) return null;
   return (
-    <span
-      className={`text-[10px] font-bold px-2 py-1 rounded-full shrink-0 ${info.cls}`}
-    >
+    <span className={`text-[10px] font-bold shrink-0 ${info.cls}`}>
       {info.label}
     </span>
   );
@@ -112,7 +108,7 @@ function StatusBadge({ status }: { status: DisplayFile["status"] }) {
 
 function NewBadge() {
   return (
-    <span className="text-[9px] font-black text-white bg-accent-purple rounded-full px-1.5 py-0.5 shrink-0 uppercase tracking-wide">
+    <span className="text-[8.5px] font-mono font-bold text-accent-purpleDark border border-accent-purple/50 px-1 py-0.5 shrink-0 uppercase tracking-widest">
       Mới
     </span>
   );
@@ -146,7 +142,7 @@ function FileTypeBadge({ name }: { name: string }) {
   const style = TYPE_STYLES[ext] || "text-ink-medium bg-surface-tint";
   return (
     <span
-      className={`text-[9px] font-black uppercase tracking-wide rounded px-1.5 py-0.5 shrink-0 ${style}`}
+      className={`text-[9px] font-mono font-bold uppercase tracking-wide px-1.5 py-0.5 shrink-0 ${style}`}
     >
       {ext}
     </span>
