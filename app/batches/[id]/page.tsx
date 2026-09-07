@@ -83,7 +83,7 @@ export default function BatchDetailPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-surface-tint/40 flex items-center justify-center">
+      <main className="min-h-screen flex items-center justify-center">
         <div className="flex items-center gap-2 text-ink-medium text-[13px]">
           <IconSpinner className="w-3.5 h-3.5" />
           Đang tải...
@@ -94,9 +94,9 @@ export default function BatchDetailPage() {
 
   if (error || !batch) {
     return (
-      <main className="min-h-screen bg-surface-tint/40">
+      <main className="min-h-screen">
         <div className="max-w-[1100px] mx-auto px-4 sm:px-5 py-8">
-          <p className="text-[12px] text-red-600 bg-red-50 border border-red-100 rounded-md px-3 py-2">
+          <p className="text-[12px] text-red-600 bg-red-50 border border-red-100 rounded px-3 py-2">
             {error || "Không tìm thấy lô này."}
           </p>
           <Link href="/batches" className="text-[12px] text-primary-dark font-bold mt-3 inline-block">
@@ -108,7 +108,7 @@ export default function BatchDetailPage() {
   }
 
   return (
-    <main className="min-h-screen bg-surface-tint/40">
+    <main className="min-h-screen">
       <div className="max-w-[1100px] mx-auto px-4 sm:px-5 py-6 sm:py-8">
         <Link href="/batches" className="text-[12px] text-primary-dark font-bold mb-3 inline-block">
           ← Quay lại danh sách
@@ -116,15 +116,15 @@ export default function BatchDetailPage() {
 
         <header className="mb-5 flex items-start justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-lg bg-primary-light/60 flex items-center justify-center shrink-0">
-              <IconFolder className="w-4.5 h-4.5 text-primary-dark" />
+            <div className="w-9 h-9 rounded bg-surface-folder border border-surface-border flex items-center justify-center shrink-0">
+              <IconFolder className="w-4 h-4 text-accent-amberStrong" />
             </div>
             <div>
               <h1 className="text-[19px] sm:text-[21px] font-black tracking-tight text-ink-dark">
                 {batch.name}
               </h1>
-              <p className="text-[11.5px] text-ink-medium">
-                {files.length} / {batch.threshold} file ·{" "}
+              <p className="text-[11.5px] font-mono text-ink-medium">
+                {files.length}/{batch.threshold} file ·{" "}
                 {new Date(batch.created_at).toLocaleString("vi-VN")}
               </p>
             </div>
@@ -133,7 +133,7 @@ export default function BatchDetailPage() {
             type="button"
             onClick={handleDownloadZip}
             disabled={zipping || files.length === 0}
-            className="flex items-center gap-1.5 rounded-lg bg-primary text-white font-black text-[12px] px-4 h-[38px] shadow-cta hover:bg-primary-deep hover:shadow-ctaHover hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:shadow-none disabled:translate-y-0"
+            className="flex items-center gap-1.5 rounded bg-primary text-white font-black text-[12px] px-4 h-[38px] shadow-cta hover:bg-primary-deep hover:shadow-ctaHover hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:shadow-none disabled:translate-y-0"
           >
             {zipping ? (
               <>
@@ -155,7 +155,7 @@ export default function BatchDetailPage() {
         </header>
 
         {error && (
-          <p className="text-[11.5px] text-red-600 bg-red-50 border border-red-100 rounded-md px-2.5 py-1.5 mb-3">
+          <p className="text-[11.5px] text-red-600 bg-red-50 border border-red-100 rounded px-2.5 py-1.5 mb-3">
             {error}
           </p>
         )}
@@ -164,7 +164,7 @@ export default function BatchDetailPage() {
           {files.map((f, index) => (
             <div
               key={f.id}
-              className="rounded-lg border border-surface-border shadow-card hover:shadow-cardHover transition-shadow duration-200 overflow-hidden bg-white aspect-square relative group"
+              className="rounded border border-surface-border shadow-card hover:shadow-cardHover transition-shadow duration-200 overflow-hidden bg-white aspect-square relative group"
             >
               {isImage(f.mime_type) ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -179,8 +179,8 @@ export default function BatchDetailPage() {
                   <IconFile className="w-7 h-7 text-primary-deep" />
                 </div>
               )}
-              <span className="absolute top-1 left-1 text-[9.5px] font-bold text-white bg-black/50 rounded px-1.5 py-0.5">
-                {index + 1}
+              <span className="absolute top-1 left-1 text-[9.5px] font-mono font-bold text-white bg-black/50 px-1.5 py-0.5">
+                {String(index + 1).padStart(2, "0")}
               </span>
               <FileTypeCorner name={f.original_name} />
               <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-1.5 py-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -202,7 +202,7 @@ function FileTypeCorner({ name }: { name: string }) {
   const cls = TYPE_STYLES[ext] || "bg-slate-400";
   return (
     <span
-      className={`absolute top-1 right-1 text-[8.5px] font-black uppercase text-white rounded px-1.5 py-0.5 ${cls}`}
+      className={`absolute top-1 right-1 text-[8.5px] font-mono font-black uppercase text-white px-1.5 py-0.5 ${cls}`}
     >
       {ext}
     </span>
