@@ -33,12 +33,12 @@ export function Dropzone({
       onDragLeave={() => setIsDragging(false)}
       onDrop={handleDrop}
       onClick={() => !disabled && inputRef.current?.click()}
-      className={`rounded-xl border-2 border-dashed px-4 py-5 text-center cursor-pointer transition-all duration-200 ${
+      className={`rounded-md border-2 border-dashed px-4 py-5 text-center cursor-pointer transition-all duration-200 ${
         disabled
           ? "opacity-50 cursor-not-allowed border-surface-border bg-white"
           : isDragging
-          ? "border-primary bg-primary-light/40 scale-[1.01] shadow-cardHover"
-          : "border-primary-light bg-white shadow-card hover:border-primary hover:shadow-cardHover"
+          ? "border-primary bg-primary-light/30 scale-[1.005] shadow-cardHover"
+          : "border-surface-border bg-white shadow-card hover:border-accent-amberStrong/60 hover:shadow-cardHover"
       }`}
     >
       <input
@@ -54,16 +54,15 @@ export function Dropzone({
         }}
       />
       <div className="flex flex-col items-center gap-2">
-        <div className="w-10 h-10 rounded-full bg-white border border-primary-light flex items-center justify-center shadow-card">
-          <IconUpload className="w-4.5 h-4.5 text-primary" />
+        <div className="w-9 h-9 rounded-full bg-surface-folder border border-accent-amberStrong/30 flex items-center justify-center">
+          <IconUpload className="w-4 h-4 text-accent-amberStrong" />
         </div>
         <div>
           <p className="text-[13.5px] font-semibold text-ink-dark">
             Kéo thả file vào đây, hoặc bấm để chọn
           </p>
-          <p className="text-[11.5px] text-ink-medium mt-0.5">
-            Có thể chọn nhiều file cùng lúc — hệ thống tự lưu lên Supabase và
-            sắp xếp lại ngay
+          <p className="text-[11px] font-mono text-ink-medium mt-0.5">
+            hệ thống tự lưu lên Supabase và sắp xếp lại ngay
           </p>
         </div>
       </div>
