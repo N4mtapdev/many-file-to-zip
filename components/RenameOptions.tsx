@@ -16,7 +16,7 @@ export function RenameOptions({
   onChange: (config: RenameConfig) => void;
 }) {
   return (
-    <div className="rounded-lg border border-surface-border bg-white p-2.5 space-y-2.5">
+    <div className="space-y-2.5">
       <label className="flex items-center gap-2 cursor-pointer select-none">
         <input
           type="checkbox"
@@ -24,7 +24,7 @@ export function RenameOptions({
           onChange={(e) =>
             onChange({ ...config, usePrefix: e.target.checked })
           }
-          className="w-4 h-4 rounded-xs border-2 border-primary-light accent-primary cursor-pointer"
+          className="w-4 h-4 border-2 border-surface-border accent-primary cursor-pointer"
         />
         <span className="text-[12px] font-semibold text-ink-dark">
           Đánh số thứ tự vào đầu tên file
@@ -42,7 +42,7 @@ export function RenameOptions({
                 onChange={(e) =>
                   onChange({ ...config, startAt: Number(e.target.value) })
                 }
-                className="w-16 rounded-md border border-primary-light px-2 py-1.5 text-[12px] font-semibold text-ink-dark focus:outline-none focus:border-primary focus:bg-surface-tint focus:shadow-focus transition-all"
+                className="w-16 rounded border border-surface-border px-2 py-1.5 text-[12px] font-mono font-bold text-ink-dark focus:outline-none focus:border-primary focus:shadow-focus transition-all"
               />
             </Field>
 
@@ -52,7 +52,7 @@ export function RenameOptions({
                 onChange={(e) =>
                   onChange({ ...config, padding: Number(e.target.value) })
                 }
-                className="rounded-md border border-primary-light px-2 py-1.5 text-[12px] font-semibold text-ink-dark focus:outline-none focus:border-primary focus:bg-surface-tint focus:shadow-focus transition-all"
+                className="rounded border border-surface-border px-2 py-1.5 text-[12px] font-mono font-bold text-ink-dark focus:outline-none focus:border-primary focus:shadow-focus transition-all"
               >
                 {[1, 2, 3, 4, 5].map((n) => (
                   <option key={n} value={n}>
@@ -70,15 +70,15 @@ export function RenameOptions({
               onChange={(e) =>
                 onChange({ ...config, keepOriginalName: e.target.checked })
               }
-              className="w-4 h-4 rounded-xs border-2 border-primary-light accent-primary cursor-pointer"
+              className="w-4 h-4 border-2 border-surface-border accent-primary cursor-pointer"
             />
             <span className="text-[12px] text-ink-dark">
               Giữ tên gốc sau số thứ tự
             </span>
           </label>
 
-          <p className="text-[10.5px] text-ink-medium">
-            Ví dụ: {previewName(config)}
+          <p className="text-[10.5px] font-mono text-ink-medium bg-surface-tint px-2 py-1 border-l-2 border-accent-amberStrong/50">
+            {previewName(config)}
           </p>
         </div>
       )}
