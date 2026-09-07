@@ -24,11 +24,11 @@ export default function RootLayout({
           crossOrigin="anonymous"
         />
         <link
-          href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&family=JetBrains+Mono:wght@500;700;800&display=swap"
           rel="stylesheet"
         />
       </head>
-      <body className="font-sans bg-surface-white text-ink-dark antialiased">
+      <body className="font-sans bg-surface-kraft text-ink-dark antialiased">
         <AuthProvider>
           <DebugConsole />
           {children}
