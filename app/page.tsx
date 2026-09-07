@@ -238,14 +238,13 @@ export default function Home() {
   const progressPercent =
     totalQueued > 0 ? Math.round((uploadedSoFar / totalQueued) * 100) : 0;
   return (
-    <main className="min-h-screen bg-surface-tint/40">
+    <main className="min-h-screen">
       <div className="max-w-[1100px] mx-auto px-4 sm:px-5 py-5 sm:py-6">
         <header className="mb-4 flex items-start justify-between gap-3 flex-wrap">
           <div>
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-primary-light/50 border border-primary-light px-2.5 py-0.5 mb-1.5">
-              <IconFolder className="w-3 h-3 text-primary-dark" />
-              <span className="text-[10px] font-bold text-primary-dark tracking-wide">
-                Công cụ cá nhân
+            <div className="inline-flex items-center gap-1.5 border border-accent-amberStrong/40 px-2 py-0.5 mb-2 rotate-[-1deg]">
+              <span className="text-[9px] font-mono font-bold text-accent-amberStrong tracking-widest uppercase">
+                ★ Công cụ cá nhân
               </span>
             </div>
             <h1 className="text-[20px] sm:text-[22px] font-black leading-tight tracking-tight text-ink-dark">
@@ -260,9 +259,9 @@ export default function Home() {
           <div className="flex flex-col items-end gap-1 shrink-0">
             <Link
               href="/batches"
-              className="flex items-center gap-1.5 text-[12px] font-bold text-primary-dark border border-primary-light rounded-md px-3 py-1.5 hover:bg-primary-light/40 transition-colors"
+              className="flex items-center gap-1.5 text-[12px] font-bold text-ink-dark bg-white border border-surface-border rounded shadow-card px-3 py-1.5 hover:shadow-cardHover hover:-translate-y-0.5 transition-all duration-200"
             >
-              <IconLayers className="w-3.5 h-3.5" />
+              <IconLayers className="w-3.5 h-3.5 text-primary" />
               Các lô đã lưu
             </Link>
             {session?.user?.email && (
@@ -317,7 +316,7 @@ export default function Home() {
                       <IconSpinner className="w-3 h-3" />
                       Đang tải file...
                     </span>
-                    <span className="tabular-nums">
+                    <span className="font-mono tabular-nums">
                       {uploadedSoFar}/{totalQueued} ({progressPercent}%)
                     </span>
                   </div>
@@ -347,61 +346,63 @@ export default function Home() {
               )}
 
               {openBatches.map((entry) => (
-                <div
-                  key={entry.batch.id}
-                  className="rounded-xl border border-surface-border bg-white shadow-card p-3 space-y-2"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="w-7 h-7 rounded-lg bg-primary-light/60 flex items-center justify-center shrink-0">
-                        <IconFolder className="w-3.5 h-3.5 text-primary-dark" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <h3 className="text-[12.5px] font-bold text-ink-dark truncate">
-                            {entry.batch.name}
-                          </h3>
-                          {isBatchRecent(entry.batch.created_at) && !entry.batch.is_full && (
-                            <BatchBadge label="Mới" tone="purple" />
-                          )}
-                          {entry.batch.is_full && <BatchBadge label="Đầy" tone="primary" />}
+                <div key={entry.batch.id} className="relative pt-2.5">
+                  {/* Folder tab */}
+                  <div className="absolute top-0 left-3 h-4 w-28 bg-surface-folderTab rounded-t-md border border-b-0 border-surface-border" />
+                  <div className="relative rounded-md border border-surface-border bg-surface-folder shadow-card p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-6 h-6 rounded bg-white/70 border border-surface-border flex items-center justify-center shrink-0">
+                          <IconFolder className="w-3 h-3 text-accent-amberStrong" />
                         </div>
-                        <p className="text-[10.5px] text-ink-medium">
-                          {entry.files.length} / {entry.batch.threshold} file
-                        </p>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <h3 className="text-[12.5px] font-bold text-ink-dark truncate">
+                              {entry.batch.name}
+                            </h3>
+                            {isBatchRecent(entry.batch.created_at) && !entry.batch.is_full && (
+                              <BatchBadge label="Mới" tone="purple" />
+                            )}
+                            {entry.batch.is_full && <BatchBadge label="Đầy" tone="primary" />}
+                          </div>
+                          <p className="text-[10px] font-mono text-ink-medium tabular-nums">
+                            {String(entry.files.length).padStart(2, "0")} / {entry.batch.threshold} FILE
+                          </p>
+                        </div>
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadZip(entry.batch)}
+                        disabled={zippingId === entry.batch.id || entry.files.length === 0}
+                        className="flex items-center gap-1 text-[11px] font-bold text-white bg-primary rounded px-2.5 py-1.5 shadow-cta hover:bg-primary-deep hover:shadow-ctaHover transition-all duration-200 disabled:opacity-40 disabled:shadow-none shrink-0"
+                      >
+                        {zippingId === entry.batch.id ? (
+                          <IconSpinner className="w-3 h-3" />
+                        ) : zipDoneIds.has(entry.batch.id) ? (
+                          <IconCheck className="w-3 h-3" />
+                        ) : (
+                          <IconZip className="w-3 h-3" />
+                        )}
+                        ZIP
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleDownloadZip(entry.batch)}
-                      disabled={zippingId === entry.batch.id || entry.files.length === 0}
-                      className="flex items-center gap-1 text-[11px] font-bold text-white bg-primary rounded-md px-2.5 py-1.5 shadow-cta hover:bg-primary-deep hover:shadow-ctaHover transition-all duration-200 disabled:opacity-40 disabled:shadow-none shrink-0"
-                    >
-                      {zippingId === entry.batch.id ? (
-                        <IconSpinner className="w-3 h-3" />
-                      ) : zipDoneIds.has(entry.batch.id) ? (
-                        <IconCheck className="w-3 h-3" />
-                      ) : (
-                        <IconZip className="w-3 h-3" />
+                    <FileList
+                      files={entry.files.map(
+                        (f): DisplayFile => ({
+                          id: f.id,
+                          originalName: f.original_name,
+                          finalName: f.renamed_name || f.original_name,
+                          size: f.size_bytes,
+                          status: "uploaded",
+                          createdAt: f.created_at,
+                        })
                       )}
-                      ZIP
-                    </button>
+                      onRemove={(fileId) => handleRemove(entry.batch.id, fileId)}
+                    />
                   </div>
-                  <FileList
-                    files={entry.files.map(
-                      (f): DisplayFile => ({
-                        id: f.id,
-                        originalName: f.original_name,
-                        finalName: f.renamed_name || f.original_name,
-                        size: f.size_bytes,
-                        status: "uploaded",
-                        createdAt: f.created_at,
-                      })
-                    )}
-                    onRemove={(fileId) => handleRemove(entry.batch.id, fileId)}
-                  />
                 </div>
               ))}
+
 
               {queueState.error && (
                 <p className="text-[11.5px] text-red-600 bg-red-50 border border-red-100 rounded-md px-2.5 py-1.5">
@@ -426,7 +427,7 @@ export default function Home() {
                       );
                       setThreshold(v);
                     }}
-                    className="w-20 rounded-md border border-primary-light px-2.5 py-1.5 text-[12px] font-semibold text-ink-dark focus:outline-none focus:border-primary focus:bg-white focus:shadow-focus transition-all"
+                    className="w-20 rounded border border-surface-border px-2.5 py-1.5 text-[13px] font-mono font-bold text-ink-dark focus:outline-none focus:border-primary focus:bg-white focus:shadow-focus transition-all"
                   />
                   <span className="text-[11px] text-ink-medium">
                     file/lô (tối đa {HARD_MAX_THRESHOLD})
@@ -480,10 +481,12 @@ function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-lg border border-primary-light bg-white shadow-card p-2.5">
-      <div className="flex items-center gap-1.5 mb-2">
-        {icon && <span className="text-primary-dark">{icon}</span>}
-        <h2 className="text-[11.5px] font-bold text-ink-dark">{title}</h2>
+    <div className="rounded-md border border-surface-border bg-white shadow-card p-2.5">
+      <div className="flex items-center gap-1.5 mb-2 pb-1.5 border-b border-surface-border">
+        {icon && <span className="text-accent-amberStrong">{icon}</span>}
+        <h2 className="text-[10.5px] font-mono font-bold text-ink-dark uppercase tracking-wide">
+          {title}
+        </h2>
       </div>
       {children}
     </div>
@@ -500,14 +503,14 @@ function StatCard({
   value: string;
 }) {
   return (
-    <div className="rounded-lg border border-surface-border bg-white shadow-card px-2.5 py-2 flex items-center gap-2">
-      <div className="w-7 h-7 rounded-md bg-primary-light/50 flex items-center justify-center shrink-0 text-primary-dark">
-        {icon}
+    <div className="rounded-md border border-surface-border border-l-[3px] border-l-primary bg-white shadow-card px-3 py-2">
+      <div className="flex items-center gap-1.5 text-ink-medium mb-0.5">
+        <span className="opacity-60">{icon}</span>
+        <p className="text-[9.5px] uppercase tracking-wide truncate">{label}</p>
       </div>
-      <div className="min-w-0">
-        <p className="text-[14px] font-black text-ink-dark leading-tight">{value}</p>
-        <p className="text-[9.5px] text-ink-medium truncate">{label}</p>
-      </div>
+      <p className="text-[17px] font-mono font-bold text-ink-dark leading-none tabular-nums">
+        {value}
+      </p>
     </div>
   );
 }
@@ -515,11 +518,11 @@ function StatCard({
 function BatchBadge({ label, tone }: { label: string; tone: "purple" | "primary" }) {
   const cls =
     tone === "purple"
-      ? "text-white bg-accent-purple"
-      : "text-primary-dark bg-primary-light/70";
+      ? "text-accent-purpleDark border-accent-purple/50"
+      : "text-primary-dark border-primary/50";
   return (
     <span
-      className={`text-[9px] font-black uppercase tracking-wide rounded-full px-1.5 py-0.5 shrink-0 ${cls}`}
+      className={`text-[8.5px] font-mono font-bold uppercase tracking-widest border px-1 py-0.5 shrink-0 ${cls}`}
     >
       {label}
     </span>
