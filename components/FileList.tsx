@@ -40,8 +40,8 @@ export function FileList({
   if (files.length === 0) return null;
 
   return (
-    <div className="rounded-lg border border-surface-border overflow-hidden">
-      <div className="max-h-[340px] overflow-y-auto divide-y divide-surface-border">
+    <div className="rounded-lg border border-surface-border overflow-hidden bg-surface-tint/30">
+      <div className="max-h-[300px] overflow-y-auto divide-y divide-surface-border">
         {files.map((file, index) => (
           <div
             key={file.id}
