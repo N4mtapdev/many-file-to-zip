@@ -7,7 +7,7 @@ import { Dropzone } from "@/components/Dropzone";
 import { FileList, type DisplayFile } from "@/components/FileList";
 import { SortModeSelector } from "@/components/SortModeSelector";
 import { RenameOptions, type RenameConfig } from "@/components/RenameOptions";
-import { IconZip, IconCheck, IconSpinner, IconLayers, IconSort, IconTag, IconInbox, IconInfo, IconUser, IconLogout, IconFolder } from "@/components/icons";
+import { IconZip, IconCheck, IconSpinner, IconLayers, IconSort, IconTag, IconInbox, IconInfo, IconUser, IconLogout, IconFolder, IconChevronDown } from "@/components/icons";
 import { DuplicateWarningModal } from "@/components/DuplicateWarningModal";
 import type { SortMode } from "@/lib/sorting";
 import {
@@ -54,6 +54,8 @@ export default function Home() {
   const [zippingId, setZippingId] = useState<string | null>(null);
   const [zipDoneIds, setZipDoneIds] = useState<Set<string>>(new Set());
   const [duplicatePreviewUrl, setDuplicatePreviewUrl] = useState<string | null>(null);
+  const [expandedBatchId, setExpandedBatchId] = useState<string | null>(null);
+  const [openPopover, setOpenPopover] = useState<"sort" | "rename" | null>(null);
 
   // Local mirror of the shared upload queue's state. Subscribing means this
   // page reflects live progress even if a duplicate popup or upload was
@@ -92,7 +94,6 @@ export default function Home() {
         upsertOpenBatch(state.batchUpdate.batch, state.batchUpdate.files);
       }
       if (state.queueLength === 0 && !state.processing) {
-        // Queue drained — reset the progress counter for the next batch of adds.
         totalQueuedRef.current = 0;
         setTotalQueued(0);
       }
@@ -167,7 +168,6 @@ export default function Home() {
       );
       await refreshBatch(batchId);
     } catch (e) {
-      // Keep this local — it's outside the shared queue's error channel.
       console.error(e);
     }
   }
@@ -237,9 +237,11 @@ export default function Home() {
   const uploadedSoFar = Math.max(totalQueued - queueState.queueLength, 0);
   const progressPercent =
     totalQueued > 0 ? Math.round((uploadedSoFar / totalQueued) * 100) : 0;
+
   return (
     <main className="min-h-screen">
-      <div className="max-w-[1100px] mx-auto px-4 sm:px-5 py-5 sm:py-6">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5 sm:py-6">
+        {/* Header */}
         <header className="mb-4 flex items-start justify-between gap-3 flex-wrap">
           <div>
             <div className="inline-flex items-center gap-1.5 border border-accent-amberStrong/40 px-2 py-0.5 mb-2 rotate-[-1deg]">
@@ -250,11 +252,6 @@ export default function Home() {
             <h1 className="text-[20px] sm:text-[22px] font-black leading-tight tracking-tight text-ink-dark">
               Sắp xếp &amp; gộp file thành ZIP
             </h1>
-            <p className="text-[12px] text-ink-medium mt-0.5 max-w-[520px]">
-              Thêm file bất kỳ lúc nào — mỗi file tự rơi đúng lô theo số thứ
-              tự (STT) trong tên. File STT vượt ngưỡng tự chuyển sang lô kế
-              tiếp.
-            </p>
           </div>
           <div className="flex flex-col items-end gap-1 shrink-0">
             <Link
@@ -285,32 +282,38 @@ export default function Home() {
           </div>
         ) : (
           <>
-            {openBatches.length > 0 && (
-              <div className="grid grid-cols-3 gap-2 mb-3.5">
-                <StatCard
-                  icon={<IconFolder className="w-3.5 h-3.5" />}
-                  label="Số lô"
-                  value={String(openBatches.length)}
-                />
-                <StatCard
-                  icon={<IconInbox className="w-3.5 h-3.5" />}
-                  label="Tổng file"
-                  value={String(totalPendingAcrossBatches)}
-                />
-                <StatCard
-                  icon={<IconCheck className="w-3.5 h-3.5" />}
-                  label="Đã đầy"
-                  value={`${openBatches.filter((b) => b.batch.is_full).length}/${openBatches.length}`}
-                />
+            {/* Toolbar: thin dropzone + inline controls + stats, all on the desk surface */}
+            <div className="rounded-md border border-surface-border bg-white shadow-card p-2.5 mb-4">
+              <div className="flex flex-col lg:flex-row lg:items-center gap-2.5">
+                <div className="flex-1 min-w-0">
+                  <Dropzone onFilesAdded={handleFilesAdded} disabled={queueState.processing} compact />
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <ThresholdControl value={threshold} onChange={setThreshold} />
+
+                  <PopoverButton
+                    label="Sắp xếp"
+                    icon={<IconSort className="w-3.5 h-3.5" />}
+                    open={openPopover === "sort"}
+                    onToggle={() => setOpenPopover(openPopover === "sort" ? null : "sort")}
+                  >
+                    <SortModeSelector value={sortMode} onChange={handleSortModeChange} />
+                  </PopoverButton>
+
+                  <PopoverButton
+                    label="Đổi tên"
+                    icon={<IconTag className="w-3.5 h-3.5" />}
+                    open={openPopover === "rename"}
+                    onToggle={() => setOpenPopover(openPopover === "rename" ? null : "rename")}
+                  >
+                    <RenameOptions config={renameConfig} onChange={handleRenameConfigChange} />
+                  </PopoverButton>
+                </div>
               </div>
-            )}
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4">
-            {/* Left column: upload + open batches */}
-            <div className="space-y-3">
-              <Dropzone onFilesAdded={handleFilesAdded} disabled={queueState.processing} />
 
               {(queueState.processing || totalQueued > 0) && queueState.queueLength > 0 && (
-                <div className="space-y-1 px-0.5">
+                <div className="space-y-1 px-0.5 mt-2.5 pt-2.5 border-t border-surface-border">
                   <div className="flex items-center justify-between text-[11px] text-primary-dark font-semibold">
                     <span className="flex items-center gap-1.5">
                       <IconSpinner className="w-3 h-3" />
@@ -329,131 +332,135 @@ export default function Home() {
                 </div>
               )}
               {queueState.resorting && queueState.queueLength === 0 && (
-                <div className="flex items-center gap-1.5 text-[12px] text-ink-medium px-0.5">
+                <div className="flex items-center gap-1.5 text-[12px] text-ink-medium px-0.5 mt-2">
                   <IconSpinner className="w-3 h-3" />
                   Đang sắp xếp lại...
                 </div>
               )}
+            </div>
 
-              {openBatches.length === 0 && totalPendingAcrossBatches === 0 && (
-                <div className="flex items-start gap-2.5 rounded-lg border border-dashed border-surface-border px-3.5 py-3">
-                  <IconInbox className="w-4 h-4 text-ink-medium shrink-0 mt-0.5" />
-                  <p className="text-[12px] text-ink-medium">
-                    Chưa có lô nào — thêm file để bắt đầu. Lô sẽ tự tạo dựa
-                    trên số thứ tự (STT) trong tên file.
-                  </p>
-                </div>
-              )}
+            {/* Stats row */}
+            {openBatches.length > 0 && (
+              <div className="grid grid-cols-3 sm:grid-cols-3 gap-2 mb-4 sm:max-w-[420px]">
+                <StatCard
+                  icon={<IconFolder className="w-3.5 h-3.5" />}
+                  label="Số lô"
+                  value={String(openBatches.length)}
+                />
+                <StatCard
+                  icon={<IconInbox className="w-3.5 h-3.5" />}
+                  label="Tổng file"
+                  value={String(totalPendingAcrossBatches)}
+                />
+                <StatCard
+                  icon={<IconCheck className="w-3.5 h-3.5" />}
+                  label="Đã đầy"
+                  value={`${openBatches.filter((b) => b.batch.is_full).length}/${openBatches.length}`}
+                />
+              </div>
+            )}
 
-              {openBatches.map((entry) => (
-                <div key={entry.batch.id} className="relative pt-2.5">
-                  {/* Folder tab */}
-                  <div className="absolute top-0 left-3 h-4 w-28 bg-surface-folderTab rounded-t-md border border-b-0 border-surface-border" />
-                  <div className="relative rounded-md border border-surface-border bg-surface-folder shadow-card p-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className="w-6 h-6 rounded bg-white/70 border border-surface-border flex items-center justify-center shrink-0">
-                          <IconFolder className="w-3 h-3 text-accent-amberStrong" />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <h3 className="text-[12.5px] font-bold text-ink-dark truncate">
-                              {entry.batch.name}
-                            </h3>
-                            {isBatchRecent(entry.batch.created_at) && !entry.batch.is_full && (
-                              <BatchBadge label="Mới" tone="purple" />
-                            )}
-                            {entry.batch.is_full && <BatchBadge label="Đầy" tone="primary" />}
-                          </div>
-                          <p className="text-[10px] font-mono text-ink-medium tabular-nums">
-                            {String(entry.files.length).padStart(2, "0")} / {entry.batch.threshold} FILE
-                          </p>
-                        </div>
-                      </div>
+            {queueState.error && (
+              <p className="text-[11.5px] text-red-600 bg-red-50 border border-red-100 rounded-md px-2.5 py-1.5 mb-3">
+                {queueState.error}
+              </p>
+            )}
+
+            {openBatches.length === 0 && totalPendingAcrossBatches === 0 && (
+              <div className="flex items-start gap-2.5 rounded-lg border border-dashed border-surface-border px-3.5 py-3">
+                <IconInbox className="w-4 h-4 text-ink-medium shrink-0 mt-0.5" />
+                <p className="text-[12px] text-ink-medium">
+                  Chưa có lô nào — thêm file để bắt đầu. Lô sẽ tự tạo dựa
+                  trên số thứ tự (STT) trong tên file.
+                </p>
+              </div>
+            )}
+
+            {/* Batches laid out as folders spread across the desk */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-x-3 gap-y-4">
+              {openBatches.map((entry) => {
+                const isExpanded = expandedBatchId === entry.batch.id;
+                return (
+                  <div key={entry.batch.id} className="relative pt-2.5">
+                    <div className="absolute top-0 left-3 h-4 w-28 bg-surface-folderTab rounded-t-md border border-b-0 border-surface-border" />
+                    <div className="relative rounded-md border border-surface-border bg-surface-folder shadow-card p-3 space-y-2">
                       <button
                         type="button"
-                        onClick={() => handleDownloadZip(entry.batch)}
-                        disabled={zippingId === entry.batch.id || entry.files.length === 0}
-                        className="flex items-center gap-1 text-[11px] font-bold text-white bg-primary rounded px-2.5 py-1.5 shadow-cta hover:bg-primary-deep hover:shadow-ctaHover transition-all duration-200 disabled:opacity-40 disabled:shadow-none shrink-0"
+                        onClick={() => setExpandedBatchId(isExpanded ? null : entry.batch.id)}
+                        className="w-full flex items-center justify-between text-left"
                       >
-                        {zippingId === entry.batch.id ? (
-                          <IconSpinner className="w-3 h-3" />
-                        ) : zipDoneIds.has(entry.batch.id) ? (
-                          <IconCheck className="w-3 h-3" />
-                        ) : (
-                          <IconZip className="w-3 h-3" />
-                        )}
-                        ZIP
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-6 h-6 rounded bg-white/70 border border-surface-border flex items-center justify-center shrink-0">
+                            <IconFolder className="w-3 h-3 text-accent-amberStrong" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <h3 className="text-[12.5px] font-bold text-ink-dark truncate">
+                                {entry.batch.name}
+                              </h3>
+                              {isBatchRecent(entry.batch.created_at) && !entry.batch.is_full && (
+                                <BatchBadge label="Mới" tone="purple" />
+                              )}
+                              {entry.batch.is_full && <BatchBadge label="Đầy" tone="primary" />}
+                            </div>
+                            <p className="text-[10px] font-mono text-ink-medium tabular-nums">
+                              {String(entry.files.length).padStart(2, "0")} / {entry.batch.threshold} FILE
+                            </p>
+                          </div>
+                        </div>
+                        <IconChevronDown
+                          className={`w-3.5 h-3.5 text-ink-medium shrink-0 transition-transform duration-200 ${
+                            isExpanded ? "rotate-180" : ""
+                          }`}
+                        />
                       </button>
-                    </div>
-                    <FileList
-                      files={entry.files.map(
-                        (f): DisplayFile => ({
-                          id: f.id,
-                          originalName: f.original_name,
-                          finalName: f.renamed_name || f.original_name,
-                          size: f.size_bytes,
-                          status: "uploaded",
-                          createdAt: f.created_at,
-                        })
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadZip(entry.batch)}
+                          disabled={zippingId === entry.batch.id || entry.files.length === 0}
+                          className="flex items-center gap-1 text-[11px] font-bold text-white bg-primary rounded px-2.5 py-1.5 shadow-cta hover:bg-primary-deep hover:shadow-ctaHover transition-all duration-200 disabled:opacity-40 disabled:shadow-none shrink-0"
+                        >
+                          {zippingId === entry.batch.id ? (
+                            <IconSpinner className="w-3 h-3" />
+                          ) : zipDoneIds.has(entry.batch.id) ? (
+                            <IconCheck className="w-3 h-3" />
+                          ) : (
+                            <IconZip className="w-3 h-3" />
+                          )}
+                          ZIP
+                        </button>
+                        {!isExpanded && entry.files.length > 0 && (
+                          <span className="text-[10px] text-ink-medium truncate">
+                            {entry.files
+                              .slice(0, 2)
+                              .map((f) => f.renamed_name || f.original_name)
+                              .join(", ")}
+                            {entry.files.length > 2 ? `, +${entry.files.length - 2}` : ""}
+                          </span>
+                        )}
+                      </div>
+
+                      {isExpanded && (
+                        <FileList
+                          files={entry.files.map(
+                            (f): DisplayFile => ({
+                              id: f.id,
+                              originalName: f.original_name,
+                              finalName: f.renamed_name || f.original_name,
+                              size: f.size_bytes,
+                              status: "uploaded",
+                              createdAt: f.created_at,
+                            })
+                          )}
+                          onRemove={(fileId) => handleRemove(entry.batch.id, fileId)}
+                        />
                       )}
-                      onRemove={(fileId) => handleRemove(entry.batch.id, fileId)}
-                    />
+                    </div>
                   </div>
-                </div>
-              ))}
-
-
-              {queueState.error && (
-                <p className="text-[11.5px] text-red-600 bg-red-50 border border-red-100 rounded-md px-2.5 py-1.5">
-                  {queueState.error}
-                </p>
-              )}
-            </div>
-
-            {/* Right column: controls */}
-            <div className="space-y-2.5">
-              <Panel title="Ngưỡng mỗi lô" icon={<IconTag className="w-3.5 h-3.5" />}>
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="number"
-                    min={1}
-                    max={HARD_MAX_THRESHOLD}
-                    value={threshold}
-                    onChange={(e) => {
-                      const v = Math.max(
-                        1,
-                        Math.min(HARD_MAX_THRESHOLD, Number(e.target.value) || 1)
-                      );
-                      setThreshold(v);
-                    }}
-                    className="w-20 rounded border border-surface-border px-2.5 py-1.5 text-[13px] font-mono font-bold text-ink-dark focus:outline-none focus:border-primary focus:bg-white focus:shadow-focus transition-all"
-                  />
-                  <span className="text-[11px] text-ink-medium">
-                    file/lô (tối đa {HARD_MAX_THRESHOLD})
-                  </span>
-                </div>
-                <p className="text-[10.5px] text-ink-medium mt-1.5 leading-relaxed">
-                  Ngưỡng cũng là biên STT cho lô mới. Các lô đã tạo giữ
-                  nguyên ngưỡng riêng, không đổi theo.
-                </p>
-              </Panel>
-
-              <Panel title="Sắp xếp trong lô" icon={<IconSort className="w-3.5 h-3.5" />}>
-                <SortModeSelector value={sortMode} onChange={handleSortModeChange} />
-              </Panel>
-
-              <Panel title="Đổi tên file" icon={<IconTag className="w-3.5 h-3.5" />}>
-                <RenameOptions config={renameConfig} onChange={handleRenameConfigChange} />
-              </Panel>
-
-              <Panel title="Lưu ý" icon={<IconInfo className="w-3.5 h-3.5" />}>
-                <p className="text-[11px] text-ink-medium leading-relaxed">
-                  File vẫn được giữ lại trên Supabase sau khi tải zip — xem
-                  lại trong &quot;Các lô đã lưu&quot;.
-                </p>
-              </Panel>
-            </div>
+                );
+              })}
             </div>
           </>
         )}
@@ -471,24 +478,68 @@ export default function Home() {
   );
 }
 
-function Panel({
-  title,
+function ThresholdControl({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <div className="flex items-center gap-1.5 border border-surface-border rounded px-2 py-1.5 bg-white">
+      <IconTag className="w-3.5 h-3.5 text-accent-amberStrong shrink-0" />
+      <input
+        type="number"
+        min={1}
+        max={HARD_MAX_THRESHOLD}
+        value={value}
+        onChange={(e) => {
+          const v = Math.max(1, Math.min(HARD_MAX_THRESHOLD, Number(e.target.value) || 1));
+          onChange(v);
+        }}
+        className="w-12 text-[13px] font-mono font-bold text-ink-dark focus:outline-none bg-transparent"
+      />
+      <span className="text-[10px] text-ink-medium whitespace-nowrap">file/lô</span>
+    </div>
+  );
+}
+
+function PopoverButton({
+  label,
   icon,
+  open,
+  onToggle,
   children,
 }: {
-  title: string;
-  icon?: React.ReactNode;
+  label: string;
+  icon: React.ReactNode;
+  open: boolean;
+  onToggle: () => void;
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-md border border-surface-border bg-white shadow-card p-2.5">
-      <div className="flex items-center gap-1.5 mb-2 pb-1.5 border-b border-surface-border">
-        {icon && <span className="text-accent-amberStrong">{icon}</span>}
-        <h2 className="text-[10.5px] font-mono font-bold text-ink-dark uppercase tracking-wide">
-          {title}
-        </h2>
-      </div>
-      {children}
+    <div className="relative">
+      <button
+        type="button"
+        onClick={onToggle}
+        className={`flex items-center gap-1.5 border rounded px-2.5 py-1.5 text-[12px] font-bold transition-colors ${
+          open
+            ? "border-primary text-primary-dark bg-primary-light/30"
+            : "border-surface-border text-ink-dark bg-white hover:border-primary/50"
+        }`}
+      >
+        <span className="text-accent-amberStrong">{icon}</span>
+        {label}
+        <IconChevronDown className={`w-3 h-3 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={onToggle} />
+          <div className="absolute right-0 top-full mt-1.5 z-20 w-[280px] rounded-md border border-surface-border bg-white shadow-elevated p-3">
+            {children}
+          </div>
+        </>
+      )}
     </div>
   );
 }
